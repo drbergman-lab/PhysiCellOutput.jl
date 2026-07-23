@@ -1,3 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 PhysiCellOutput = "61ac5edc-a73d-4441-b68d-d9b510422d04"
+
+[compat]
+Documenter = "1.17.0"
