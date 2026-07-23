@@ -1,6 +1,6 @@
 using PhysiCellOutput
 using Test
-using DataFrames, Graphs, MetaGraphsNext, Dates
+using DataFrames, Graphs, MetaGraphsNext, Dates, LightXML
 
 const FIXTURE = joinpath(@__DIR__, "fixtures", "output")
 
@@ -161,5 +161,29 @@ const FIXTURE = joinpath(@__DIR__, "fixtures", "output")
 
     @testset "getCellDataSequence deprecation" begin
         @test (@test_deprecated getCellDataSequence(FIXTURE, "total_volume")) isa PhysiCellOutput.AgentDict
+    end
+
+    @testset "getSimpleContent required=false" begin
+        xml_doc = parse_file(joinpath(FIXTURE, "initial.xml"))
+        try
+            # present terminal element → content
+            @test PhysiCellOutput.getSimpleContent(xml_doc, ["metadata", "current_time"]) isa String
+            # missing path with required=false → nothing (not an error)
+            @test PhysiCellOutput.getSimpleContent(xml_doc, ["metadata", "not_a_field"]; required=false) === nothing
+            # missing path with required=true → error
+            @test_throws ArgumentError PhysiCellOutput.getSimpleContent(xml_doc, ["metadata", "not_a_field"])
+        finally
+            free(xml_doc)
+        end
+    end
+
+    @testset "show is side-effect free" begin
+        seq = PhysiCellSequence(FIXTURE)   # mesh not loaded
+        @test isempty(seq.snapshots[1].mesh)
+        str = sprint(show, seq)
+        @test isempty(seq.snapshots[1].mesh)          # show did not mutate/load
+        @test occursin("Mesh: NOT LOADED", str)
+        loadMesh!(seq)
+        @test occursin("grid on", sprint(show, seq))  # mesh info shown once loaded
     end
 end

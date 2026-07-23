@@ -94,7 +94,7 @@ function PhysiCellSnapshot(folder::AbstractString, index::Union{Integer, Symbol}
     end
     xml_doc = parse_file(path_to_xml)
     time = getSimpleContent(xml_doc, ["metadata","current_time"]) |> x->parse(Float64, x)
-    seconds_to_nanoseconds = x -> round(x * 1e9) |> Nanosecond
+    seconds_to_nanoseconds = x -> Nanosecond(round(Int, x * 1e9))
     runtime = getSimpleContent(xml_doc, ["metadata", "current_runtime"]) |> x -> parse(Float64, x) |> seconds_to_nanoseconds
     cells = DataFrame()
     if include_cells
@@ -343,8 +343,10 @@ function Base.show(io::IO, sequence::PhysiCellSequence)
     println(io, "  #Snapshots: $(length(sequence.snapshots))")
     println(io, "  Cell Types: $(join(values(sequence.cell_type_to_name_dict), ", "))")
     println(io, "  Substrates: $(join(sequence.substrate_names, ", "))")
-    loadMesh!(sequence.snapshots[1])
-    println(io, "  Mesh: $(meshInfo(sequence))")
+    #! Keep `show` side-effect free: report mesh info only if it is already loaded, matching
+    #! the `PhysiCellSnapshot` show. Load it explicitly with `loadMesh!` to populate it.
+    mesh_loaded = !isempty(sequence.snapshots) && !isempty(sequence.snapshots[1].mesh)
+    println(io, "  Mesh: $(mesh_loaded ? meshInfo(sequence) : "NOT LOADED")")
 end
 
 """

@@ -103,9 +103,14 @@ Return the text content of the terminal element in the XML document that matches
 path. See [`retrieveElement`](@ref).
 
 Asserts that the element is terminal (has no child elements) and has non-empty text content.
+When `required=false` and the path is not found, returns `nothing` (matching
+[`retrieveElement`](@ref)).
 """
 function getSimpleContent(xml_doc::XMLDocument, xml_path::Vector{<:AbstractString}; required::Bool=true)
     e = retrieveElement(xml_doc, xml_path; required=required)
+    if isnothing(e)
+        return nothing
+    end
     @assert elementIsTerminal(e) "Element at path $(join(xml_path, " -> ")) has child elements and cannot have simple content extracted."
     ret_val = content(e)
     @assert !isempty(ret_val) "Element at path $(join(xml_path, " -> ")) has no text content."
