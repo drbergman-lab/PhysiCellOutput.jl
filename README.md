@@ -68,12 +68,12 @@ PhysiCellOutput is the base loading layer. PCMM identifies simulations by an int
 - [x] `AbstractPhysiCellSequence`, `PhysiCellSnapshot`, `PhysiCellSequence` (path-based) with lazy `include_*` loading and `show` methods.
 - [x] Path/filename utilities — `indexToFilename`, `pathToOutputFileBase`, `pathToOutputXML`.
 - [x] Metadata readers — `cellLabels`, `cellTypeToNameDict`, `substrateNames` (path / `XMLDocument` / snapshot / sequence).
-- [x] Loaders — `loadCells!`, `loadSubstrates!`, `loadMesh!`, `loadGraph!` (+ `_load*` internals, `_safe_matread` zero-cell `EOFError` workaround).
+- [x] Loaders — `loadCells!`, `loadSubstrates!`, `loadMesh!`, `loadGraph!` (+ `_load*` internals). Reads zero-cell `.mat` files directly; the `MAT ≥ 0.12.1` compat floor makes the old `EOFError` workaround unnecessary.
 - [x] Graph support — `AgentID`, `AgentDict`, `physicellEmptyGraph`, `readPhysiCellGraph!`.
 - [x] `cellDataSequence` (+ deprecated `getCellDataSequence` alias).
 - [x] `Project.toml` dependencies — `DataFrames`, `MAT`, `Graphs`, `MetaGraphsNext`, `LightXML`, `Dates`.
 - [x] Test suite (75 tests) against a committed PhysiCell output fixture (`test/fixtures/output`, sim with 3 snapshots + initial/final).
+- [x] Documenter site — Home + Getting Started (Installation, Loading data) + Reference (Loading API, XML utilities, alphabetical index); builds locally with doctests and `checkdocs=:exports` passing.
 
 ### Remaining
-- [ ] Fuller Documenter site — the `docs/` site is still the PkgTemplates single-page stub; a man/lib split (like ModelManager/PCMM) can follow.
 - [ ] PCMM migration — PCMM depends on PhysiCellOutput and adds its `simulation_id` wrapper (tracked in PCMM, not here).

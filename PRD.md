@@ -151,7 +151,7 @@ All loaders are idempotent: if the target container is already populated, they r
 ### Feature: `loadCells!`
 - `loadCells!(snapshot[, cell_type_to_name_dict, labels])` and `loadCells!(sequence)`.
 - Reads `<base>_cells.mat` (variable `cells`), assigns one column per label, converts `ID`→`Int`, `dead`→`Bool`, `cell_type`→`Int`, and appends `cell_type_name`.
-- Handles the MAT.jl zero-cell `EOFError` bug via a safe read that returns a `length(labels) × 0` matrix.
+- Zero-cell snapshots read directly: `MAT ≥ 0.12.1` (enforced by the `Project.toml` compat) reads a `length(labels) × 0` matrix without the old `EOFError`, so no special-case read is needed.
 - Missing `.mat` → message + `missing`.
 
 ### Feature: `loadSubstrates!`
@@ -226,7 +226,6 @@ All are in the General registry; the package itself will be registered in the **
   - Snapshot construction (present vs missing files → `missing`), `time`/`runtime` parsing.
   - Sequence construction and count; metadata parsed once.
   - Each loader populates the expected shape; idempotency on re-load.
-  - Zero-cell `.mat` `EOFError` path returns an empty (correct-width) frame.
   - `cellDataSequence` scalar vs multi-column concatenation; `include_dead` / `include_cell_type_name`.
   - `indexToFilename` doctests.
   - `AgentDict` behaves as an `AbstractDict` with integer and `AgentID` keys.

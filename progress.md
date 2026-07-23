@@ -79,6 +79,44 @@ Implement the path-based port of PCMM `loader.jl` per the PRD, with tests.
 ### Result
 `Pkg.test()` → **75/75 pass**. No `src/` symbol references `simulation_id`/`Simulation`/database concepts (acceptance criterion 2 met).
 
-### Open questions
-- Docs site still the PkgTemplates stub; CI's doctest step only exercises the `indexToFilename` jldoctests. Fuller man/lib docs deferred.
-- `_safe_matread` zero-cell `EOFError` branch isn't hit by the fixture (no empty-cell snapshot); covered by inspection, not a test. Consider crafting a zero-cell `.mat` fixture later.
+### Open questions (resolved in the follow-up session below)
+- ~~Docs site still the PkgTemplates stub.~~ → written.
+- ~~`_safe_matread` zero-cell branch untested.~~ → workaround removed; MAT ≥ 0.12.1 fixes it.
+
+---
+
+## Session: remove _safe_matread + write docs (2026-07-23)
+
+### `_safe_matread` removal
+The user noted MAT@0.12.1 fixes the zero-column read (MAT.jl #240). Verified against the
+installed MAT 0.12.1 by round-tripping empty matrices through `matwrite`/`matread`: both
+`(88,0)` and `(0,0)` read back with the correct size and no `EOFError`. Since PhysiCell
+writes a zero-cell `cells.mat` as `(nlabels, 0)`, `eachrow` yields `nlabels` empty rows and
+`_loadCells!` produces empty typed columns — exactly what the old fallback forced. So
+`_safe_matread` is gone; `_loadCells!` calls `matread(mat_file)["cells"]` directly. The
+`MAT = "0.12.1"` compat (caret → `[0.12.1, 0.13)`) already floors us at the fixed version, so
+no compat change was needed. Tests still 75/75.
+
+### Docs
+Built a structured Documenter site mirroring the ModelManager house pattern (a slimmed
+version, since this package is small):
+- `index.md` — overview, quick start, "where do I look" table.
+- `man/installation.md` — registry + add, "what you need" (a folder, not PCMM).
+- `man/loading_data.md` — the guide: snapshots vs sequences, lazy vs construction-time
+  loading, cells/substrates/mesh/graphs, per-cell time series, PCMM relationship. Its H1 uses
+  an explicit `@id loading_data` and its section headers anchor the `index.md` `@ref`s.
+- `lib/loader.md` (Public/Private `@autodocs`, `Pages=["/loader.jl"]`), `lib/xml_utilities.md`,
+  `lib/index.md` (alphabetical `@index`).
+- `make.jl` — `collapselevel=1`, `checkdocs=:exports`, the page tree.
+
+**Doc example blocks use plain ` ```julia ` (non-doctest)** because they need a real output
+folder; only the `indexToFilename` jldoctests in the docstrings execute. Built locally clean:
+doctests pass, cross-references resolve, `checkdocs=:exports` passes (all exports documented).
+Leading `/` on `Pages=["/loader.jl"]` guards against suffix collisions (the ModelManager
+`utilities.jl`/`xml_utilities.jl` gotcha), though there's no collision here yet.
+
+### Files changed
+- `src/loader.jl` — removed `_safe_matread`; direct `matread`.
+- `docs/src/index.md`, `docs/src/man/installation.md`, `docs/src/man/loading_data.md`,
+  `docs/src/lib/{loader,xml_utilities,index}.md`, `docs/make.jl`.
+- `README.md`, `PRD.md` — status + zero-cell note updated.
