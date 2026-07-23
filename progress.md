@@ -57,3 +57,28 @@ The only genuinely PCMM-specific couplings in `loader.jl` are: `assertInitialize
 - New: `CLAUDE.md`, `PRD.md`, `progress.md`, `.github/workflows/CompatHelper.yml`, `codecov.yml`.
 - Rewritten: `.github/workflows/CI.yml`, `.github/workflows/TagBot.yml`, `README.md`.
 - No `src/` changes.
+
+---
+
+## Session: loader port implementation (2026-07-23)
+
+### Goal
+Implement the path-based port of PCMM `loader.jl` per the PRD, with tests.
+
+### What was done
+- **Dependencies** added to `Project.toml`: `DataFrames`, `MAT`, `Graphs`, `MetaGraphsNext`, `LightXML`, `Dates`. (Pkg auto-added a `Dates = "1.11.0"` compat that would have excluded Julia 1.10; relaxed to `Dates = "1"` since the package supports `lts`.)
+- **`src/xml_utilities.jl`** — copied the six read-side LightXML helpers from ModelManager verbatim (kept their original names, unexported). Deliberately did *not* copy the variation-file machinery.
+- **`src/loader.jl`** — full port. Every `simulation_id::Int` → `folder::String`; dropped `assertInitialized()`, `pathToOutputFolder`, the `Simulation` type, and all `Simulation`/`simulation_id` method overloads. `indexToFilename(::Int)` widened to `::Integer`. `show` prints `Folder=` instead of `SimID=`. Everything else is name-for-name identical so PCMM's migration stays mechanical.
+- **`src/PhysiCellOutput.jl`** — `using LightXML`; include `xml_utilities.jl` then `loader.jl`.
+- **Exports** — widened beyond the original loader.jl `export` line (which was PCMM's) to the natural standalone public API: the two types + `AbstractPhysiCellSequence`, `AgentID`, `AgentDict`, the three readers, the four `load*!`, `pathToOutputFileBase`/`pathToOutputXML`, `cellDataSequence`/`getCellDataSequence`. `indexToFilename` and the internal `_*`/XML helpers stay unexported.
+
+### Test fixture
+- Copied a trimmed real output folder from PCMM `cal-test/.../simulations/15984/output` into `test/fixtures/output` (188K): snapshots 0–2 plus `initial`/`final`, each with `.xml`, `_cells.mat`, `_microenvironment0.mat`, and the three `_*graph.txt` files. Left out svg/csv/settings/mesh0.mat (mesh comes from the XML, not `_mesh0.mat`).
+- Fixture facts the tests pin: 1 cell type `{0=>"default"}`, 1 substrate `"substrate"`, 88 cell labels, snapshot 0 `time==0.0`, `runtime isa Nanosecond`, `final` has 42 cells / neighbor graph 42v·156e. Scalar-vs-multicolumn `cellDataSequence` uses `total_volume` (scalar) and `position` (→ N×3); note there is **no** `volume` label — `volume` only exists as the substrate voxel-volume column.
+
+### Result
+`Pkg.test()` → **75/75 pass**. No `src/` symbol references `simulation_id`/`Simulation`/database concepts (acceptance criterion 2 met).
+
+### Open questions
+- Docs site still the PkgTemplates stub; CI's doctest step only exercises the `indexToFilename` jldoctests. Fuller man/lib docs deferred.
+- `_safe_matread` zero-cell `EOFError` branch isn't hit by the fixture (no empty-cell snapshot); covered by inspection, not a test. Consider crafting a zero-cell `.mat` fixture later.

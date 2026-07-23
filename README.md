@@ -9,7 +9,7 @@ Read the output folder of a **single PhysiCell simulation** into Julia — cells
 
 PhysiCellOutput is a lightweight, path-based loader. It exists so that loading PhysiCell data does not require the full [PhysiCellModelManager.jl](https://github.com/drbergman-lab/PhysiCellModelManager.jl) (PCMM) stack. PCMM depends on PhysiCellOutput for its output loading and layers its database concepts (e.g. simulation IDs) on top.
 
-> **Status:** 🚧 Early development. The docs and design are in place; the loading code is being ported from PCMM's `loader.jl`. See **Implementation Status** below.
+> **Status:** The loader is ported from PCMM's `loader.jl` and tested against a real output fixture. Remaining work is the downstream PCMM migration and a fuller docs site. See **Implementation Status** below.
 
 ## Installation
 
@@ -64,15 +64,16 @@ PhysiCellOutput is the base loading layer. PCMM identifies simulations by an int
 ### Completed
 - [x] Project scaffolding — docs (`CLAUDE.md`, `PRD.md`, `progress.md`, this README), CI/TagBot/CompatHelper wired to the BergmanLabRegistry, codecov config.
 - [x] Core design decision locked — **path-based identity** (types key on `folder::String`, not `simulation_id`); PCMM re-adds the ID via a thin wrapper. See PRD "Core Design Decision".
+- [x] Internal LightXML helpers (`retrieveElement`, `getSimpleContent`, `getChildByAttribute`, `getChildByChildContent`, `retrieveElementError`, `elementIsTerminal`) — minimal read-side subset copied from ModelManager (`src/xml_utilities.jl`).
+- [x] `AbstractPhysiCellSequence`, `PhysiCellSnapshot`, `PhysiCellSequence` (path-based) with lazy `include_*` loading and `show` methods.
+- [x] Path/filename utilities — `indexToFilename`, `pathToOutputFileBase`, `pathToOutputXML`.
+- [x] Metadata readers — `cellLabels`, `cellTypeToNameDict`, `substrateNames` (path / `XMLDocument` / snapshot / sequence).
+- [x] Loaders — `loadCells!`, `loadSubstrates!`, `loadMesh!`, `loadGraph!` (+ `_load*` internals, `_safe_matread` zero-cell `EOFError` workaround).
+- [x] Graph support — `AgentID`, `AgentDict`, `physicellEmptyGraph`, `readPhysiCellGraph!`.
+- [x] `cellDataSequence` (+ deprecated `getCellDataSequence` alias).
+- [x] `Project.toml` dependencies — `DataFrames`, `MAT`, `Graphs`, `MetaGraphsNext`, `LightXML`, `Dates`.
+- [x] Test suite (75 tests) against a committed PhysiCell output fixture (`test/fixtures/output`, sim with 3 snapshots + initial/final).
 
-### Remaining (the port from PCMM `loader.jl`)
-- [ ] Internal LightXML helpers (`retrieveElement`, `getSimpleContent`, `getChildByAttribute`, `getChildByChildContent`, `retrieveElementError`, `elementIsTerminal`) — minimal subset copied from ModelManager.
-- [ ] `AbstractPhysiCellSequence`, `PhysiCellSnapshot`, `PhysiCellSequence` (path-based).
-- [ ] Path/filename utilities — `indexToFilename`, `pathToOutputFileBase`, `pathToOutputXML`.
-- [ ] Metadata readers — `cellLabels`, `cellTypeToNameDict`, `substrateNames`.
-- [ ] Loaders — `loadCells!`, `loadSubstrates!`, `loadMesh!`, `loadGraph!` (+ `_load*` internals, `_safe_matread`).
-- [ ] Graph support — `AgentID`, `AgentDict`, `physicellEmptyGraph`, `readPhysiCellGraph!`.
-- [ ] `cellDataSequence` (+ deprecated `getCellDataSequence` alias).
-- [ ] `Project.toml` dependencies — `DataFrames`, `MAT`, `Graphs`, `MetaGraphsNext`, `LightXML`, `Dates`.
-- [ ] Test suite with a committed PhysiCell output fixture.
+### Remaining
+- [ ] Fuller Documenter site — the `docs/` site is still the PkgTemplates single-page stub; a man/lib split (like ModelManager/PCMM) can follow.
 - [ ] PCMM migration — PCMM depends on PhysiCellOutput and adds its `simulation_id` wrapper (tracked in PCMM, not here).
