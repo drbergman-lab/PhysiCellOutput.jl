@@ -1,0 +1,13 @@
+name = "PhysiCellOutput"
+uuid = "61ac5edc-a73d-4441-b68d-d9b510422d04"
+authors = ["Daniel Bergman <danielrbergman@gmail.com> and contributors"]
+version = "0.0.1"
+
+[compat]
+julia = "1.10.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
