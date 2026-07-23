@@ -1,6 +1,6 @@
 name = "PhysiCellOutput"
 uuid = "61ac5edc-a73d-4441-b68d-d9b510422d04"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Daniel Bergman <danielrbergman@gmail.com> and contributors"]
 
 [deps]
