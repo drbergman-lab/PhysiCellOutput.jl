@@ -1,9 +1,23 @@
 name = "PhysiCellOutput"
 uuid = "61ac5edc-a73d-4441-b68d-d9b510422d04"
-authors = ["Daniel Bergman <danielrbergman@gmail.com> and contributors"]
 version = "0.0.1"
+authors = ["Daniel Bergman <danielrbergman@gmail.com> and contributors"]
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 
 [compat]
+DataFrames = "1.8.2"
+Dates = "1"
+Graphs = "1.14.0"
+LightXML = "0.9.3"
+MAT = "0.12.1"
+MetaGraphsNext = "0.8.0"
 julia = "1.10.10"
 
 [extras]

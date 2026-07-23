@@ -11,10 +11,21 @@ makedocs(;
         canonical="https://drbergman-lab.github.io/PhysiCellOutput.jl",
         edit_link="main",
         assets=String[],
+        collapselevel=1,
     ),
     pages=[
         "Home" => "index.md",
+        "Getting Started" => Any[
+            "Installation" => "man/installation.md",
+            "Loading data" => "man/loading_data.md",
+        ],
+        "Reference" => Any[
+            "Loading API" => "lib/loader.md",
+            "XML utilities" => "lib/xml_utilities.md",
+            "Alphabetical index" => "lib/index.md",
+        ],
     ],
+    checkdocs=:exports,
 )
 
 deploydocs(;
