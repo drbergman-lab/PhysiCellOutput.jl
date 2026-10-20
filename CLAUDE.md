@@ -7,11 +7,10 @@ Assistant professor working on computational modeling of cancer-immune interacti
 
 | Document | Purpose |
 |----------|---------|
-| [README.md](README.md) | Project overview + **Implementation Status** (what is built, what remains) |
+| [README.md](README.md) | Project overview and quick start |
 | [PRD.md](PRD.md) | Behavioral specification for every feature — acceptance criteria and edge cases |
-| [progress.md](progress.md) | Session journal: decisions made, approaches rejected, open questions |
 
-Start any feature session by reading the relevant PRD entry and the Implementation Status section of `README.md`.
+Start any feature session by reading the relevant PRD entry.
 
 ## Project Overview
 PhysiCellOutput.jl reads the output folder of a **single PhysiCell simulation** and loads its data into Julia — cells, substrates, mesh, and the attachment/spring/neighbor graphs — as `DataFrame`s, dictionaries, and `MetaGraph`s. It is a **lightweight, path-based** package: given a path to an output folder, it loads the data with no database, no project structure, and no simulation registry.
@@ -67,14 +66,11 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 
 ## Required Workflow for Any Change
 1. Generate a **design brief** in the assistant response **before any code changes**.
-2. Wait for human approval.
-   1. Update `PRD.md` to include the new feature or change.
-   2. Open a new entry in `progress.md` and log the design process, decisions, and open questions.
+2. Wait for human approval, then update `PRD.md` to include the new feature or change. Design reasoning (alternatives rejected, why) goes in the PR description.
 3. Create a feature branch (`git branch feature/<desc>`; the user may switch to it).
 4. Implement on the feature branch only.
-5. Update the `README.md` Implementation Status when a feature is complete.
-6. Trim `PRD.md` and `progress.md` to reflect the final implementation before merging.
-7. When the user asks to commit, provide/run the commit with the `Co-Authored-By` trailer.
+5. Trim `PRD.md` to reflect the final implementation before merging.
+6. When the user asks to commit, provide/run the commit with the `Co-Authored-By` trailer.
 
 **Design brief template:**
 ```
@@ -102,9 +98,8 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 A feature is complete when **all** of the following are true:
 1. **Tests pass:** `julia --project=. -e 'using Pkg; Pkg.test()'` runs green.
 2. **Docstrings written:** every exported function has a docstring with description, argument list, return value, and at least one usage example.
-3. **README updated:** Implementation Status marks the feature complete.
-4. **PRD reflects reality:** update the PRD entry if implementation deviated.
-5. **No regressions:** full suite has no new failures.
+3. **PRD reflects reality:** update the PRD entry if implementation deviated.
+4. **No regressions:** full suite has no new failures.
 
 ## Integration Essentials
 - Module entrypoint: `src/PhysiCellOutput.jl` (update `include`s when adding/moving files).
@@ -114,4 +109,6 @@ A feature is complete when **all** of the following are true:
 ## PhysiCellOutput-Specific Guidance
 - This package is **path-centric and stateless**. No global state, no `__init__` registry, no database.
 - Reads only — this package never writes PhysiCell output files.
+- Docs example blocks are plain ` ```julia ` (non-doctest) because they need a real output folder; only the `indexToFilename` jldoctests in the docstrings execute. `make.jl` runs with `checkdocs=:exports`, so every export needs a docstring.
+- Building the docs locally (`Pkg.develop(path=".")` in `docs/`) writes a `[sources]` block into `docs/Project.toml`; revert it before committing.
 - Keep the public function surface API-compatible (by name and behavior) with the original PCMM `loader.jl` where practical, so PCMM's migration is a mechanical re-wiring plus its thin wrapper.

@@ -34,7 +34,7 @@ The original PCMM `loader.jl` keyed `PhysiCellSnapshot`/`PhysiCellSequence` on a
 - Construction takes a folder path (+ an `index` for snapshots).
 - **PCMM re-adds its concept:** PCMM converts `simulation_id → output-folder path` at its own boundary and calls PhysiCellOutput. Where PCMM wants the id displayed (its `show` currently prints `SimID=…`), PCMM defines a thin wrapper struct carrying the `simulation_id` plus the PhysiCellOutput object, and gives it a custom `show`. PhysiCellOutput provides the loading; PCMM provides the id semantics.
 
-Rationale and alternatives considered are recorded in [progress.md](progress.md) (Session: initial scaffolding).
+**Rationale:** the standalone package must be meaningful to anyone holding a bare output folder, and keeping PCMM concepts out entirely makes the core as simple as possible; the wrapper is cheap for PCMM. Rejected: keeping `simulation_id` on the structs (every folder-based user would have to invent an id), and a parametric `source`/owner field with a display interface (a type parameter through every signature for a single consumer).
 
 ---
 
@@ -59,6 +59,7 @@ Rationale and alternatives considered are recorded in [progress.md](progress.md)
 - `substrates::DataFrame` — substrate data (empty until loaded).
 - `mesh::Dict{String,Vector{Float64}}` — mesh data (empty until loaded).
 - `attachments::MetaGraph`, `spring_attachments::MetaGraph`, `neighbors::MetaGraph` — cell graphs (empty graph until loaded).
+- `misc::Dict{Symbol,Any}` — user-owned storage (empty at construction; see "Feature: `misc`").
 
 **Constructor:** `PhysiCellSnapshot(folder::AbstractString, index::Union{Integer,Symbol}, labels::Vector{String}=String[], substrate_names::Vector{String}=String[]; kwargs...)`
 
@@ -76,7 +77,7 @@ Rationale and alternatives considered are recorded in [progress.md](progress.md)
 - If the snapshot XML file is missing, print a message and return `missing`.
 - `time` and `runtime` are always read from XML at construction.
 - Each `include_*` flag, if `true`, loads the corresponding data; if that data's file is missing, print a message and return `missing`.
-- `show` prints folder + index, time, runtime, and a per-field "NOT LOADED"/summary line for cells, substrates, mesh, and the three graphs. (Contrast with PCMM's wrapper, which shows the `simulation_id`.)
+- `show` prints folder + index, time, runtime, a per-field "NOT LOADED"/summary line for cells, substrates, mesh, and the three graphs, and a `Misc:` line (`NONE` or the sorted keys). (Contrast with PCMM's wrapper, which shows the `simulation_id`.)
 
 **Acceptance criteria:**
 - Constructing against a valid folder/index with no `include_*` flags yields a snapshot with populated `time`/`runtime` and empty data containers.
@@ -93,6 +94,7 @@ Rationale and alternatives considered are recorded in [progress.md](progress.md)
 - `cell_type_to_name_dict::Dict{Int,String}`
 - `labels::Vector{String}`
 - `substrate_names::Vector{String}`
+- `misc::Dict{Symbol,Any}` — user-owned storage for the sequence as a whole (empty at construction; see "Feature: `misc`").
 
 **Constructor:** `PhysiCellSequence(folder::AbstractString; include_cells, include_substrates, include_mesh, include_attachments, include_spring_attachments, include_neighbors)` (all `false` by default).
 
@@ -100,11 +102,29 @@ Rationale and alternatives considered are recorded in [progress.md](progress.md)
 - Reads `cell_type_to_name_dict`, `labels` (and `substrate_names` when substrates requested) once from the `:initial` XML and threads them into every snapshot (avoids re-parsing XML per snapshot).
 - If the initial XML has no cell-type info (e.g. pruned output), print a message and return `missing`.
 - Iterates `index = 0, 1, 2, …` building a snapshot for each while `output{index}.xml` exists.
-- `show` prints folder, number of snapshots, cell types, substrates, and mesh info.
+- `show` prints folder, number of snapshots, cell types, substrates, mesh info, and a `Misc:` line (`NONE` or the sorted keys).
 
 **Acceptance criteria:**
 - A folder with N `output*.xml` files yields a sequence of N snapshots in index order.
 - Metadata (labels, cell types, substrate names) is parsed once, not per snapshot.
+
+### Feature: `misc` — user-owned storage
+**One-line:** A `Dict{Symbol,Any}` on every snapshot and sequence where users keep whatever they want attached to that object.
+**Priority:** Should-have
+
+**Behavioral spec:**
+- Both `PhysiCellSnapshot` and `PhysiCellSequence` carry a `misc::Dict{Symbol,Any}` field, created empty by the constructors.
+- Each snapshot has its own dict; the sequence has a separate one for sequence-level values. Writing to one never affects another.
+- The structs stay immutable; because `Dict` is mutable, `snapshot.misc[:n_alive] = 42` works without `mutable struct`.
+- The contents are **user-owned**: the package never reads, writes, clears, or serializes `misc`. Loaders (`loadCells!`, `loadSubstrates!`, `loadMesh!`, `loadGraph!`) and `cellDataSequence` leave existing entries untouched.
+- Intended uses include values produced mid-run by user custom code and post-hoc analyses alike. Memoization is via `Base.get!(f, S.misc, key)`; no package-level helper API is provided.
+- `show` on either type prints a `Misc:` line: `NONE` when empty, otherwise the sorted keys.
+
+**Acceptance criteria:**
+- A freshly constructed snapshot or sequence has `isempty(S.misc)` and `S.misc isa Dict{Symbol,Any}`.
+- Entries assigned to `misc` are read back unchanged and survive subsequent `load*!` calls.
+- Snapshot dicts and the sequence dict are independent objects.
+- `show` includes the key names once populated.
 
 ---
 

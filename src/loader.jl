@@ -21,6 +21,8 @@ A single snapshot of a PhysiCell simulation, identified by the path to its outpu
 
 The `cells`, `substrates`, `mesh`, and graphs (`attachments`, `spring_attachments`, `neighbors`) fields may remain empty until they are needed for analysis or explicitly loaded by the user.
 
+The `misc` field is user-owned storage: PhysiCellOutput never reads, writes, or clears it, so anything you compute from the snapshot (mid-run or afterwards) can be kept alongside it.
+
 # Constructor
 - `PhysiCellSnapshot(folder::AbstractString, index::Union{Integer,Symbol}, labels::Vector{String}=String[], substrate_names::Vector{String}=String[]; kwargs...)`
 
@@ -35,6 +37,7 @@ The `cells`, `substrates`, `mesh`, and graphs (`attachments`, `spring_attachment
 - `attachments::MetaGraph`: A graph of cell attachment data with vertices labeled by cell IDs.
 - `spring_attachments::MetaGraph`: A graph of spring attachment data with vertices labeled by cell IDs.
 - `neighbors::MetaGraph`: A graph of cell neighbor data with vertices labeled by cell IDs.
+- `misc::Dict{Symbol,Any}`: User-owned storage. Empty at construction; never touched by the package.
 
 # Optional Arguments
 - `labels::Vector{String}=String[]`: A vector of cell data labels. If empty, they are read from the snapshot XML.
@@ -60,6 +63,12 @@ snapshot = PhysiCellSnapshot(folder, :initial)
 
 # Load with specific data types
 snapshot = PhysiCellSnapshot(folder, index; include_cells=true, include_substrates=true)
+
+# Keep your own values with the snapshot
+snapshot.misc[:n_alive] = count(.!snapshot.cells.dead)
+get!(snapshot.misc, :n_alive) do # memoize: only computed if the key is absent
+    count(.!snapshot.cells.dead)
+end
 ```
 """
 struct PhysiCellSnapshot <: AbstractPhysiCellSequence
@@ -73,6 +82,7 @@ struct PhysiCellSnapshot <: AbstractPhysiCellSequence
     attachments::MetaGraph
     spring_attachments::MetaGraph
     neighbors::MetaGraph
+    misc::Dict{Symbol,Any}
 end
 
 function PhysiCellSnapshot(folder::AbstractString, index::Union{Integer, Symbol},
@@ -139,7 +149,7 @@ function PhysiCellSnapshot(folder::AbstractString, index::Union{Integer, Symbol}
         end
     end
     free(xml_doc)
-    return PhysiCellSnapshot(String(folder), index, time, runtime, DataFrame(cells), substrates, mesh, attachments, spring_attachments, neighbors)
+    return PhysiCellSnapshot(String(folder), index, time, runtime, DataFrame(cells), substrates, mesh, attachments, spring_attachments, neighbors, Dict{Symbol,Any}())
 end
 
 function Base.show(io::IO, snapshot::PhysiCellSnapshot)
@@ -152,7 +162,15 @@ function Base.show(io::IO, snapshot::PhysiCellSnapshot)
     println(io, "  Attachments: $(nv(snapshot.attachments)==0 ? "NOT LOADED" : graphInfo(snapshot.attachments))")
     println(io, "  Spring Attachments: $(nv(snapshot.spring_attachments)==0 ? "NOT LOADED" : graphInfo(snapshot.spring_attachments))")
     println(io, "  Neighbors: $(nv(snapshot.neighbors)==0 ? "NOT LOADED" : graphInfo(snapshot.neighbors))")
+    println(io, "  Misc: $(miscInfo(snapshot))")
 end
+
+"""
+    miscInfo(S::AbstractPhysiCellSequence)
+
+Return a one-line summary of the `misc` keys for `show`: `"NONE"` if empty, otherwise the sorted keys.
+"""
+miscInfo(S::AbstractPhysiCellSequence) = isempty(S.misc) ? "NONE" : join(sort(collect(keys(S.misc))), ", ")
 
 """
     indexToFilename(index)
@@ -287,6 +305,7 @@ To include any of `cells`, `substrates`, `mesh`, `attachments`, `spring_attachme
 - `cell_type_to_name_dict::Dict{Int, String}`: A dictionary mapping cell type IDs to cell type names.
 - `labels::Vector{String}`: A vector of cell data labels.
 - `substrate_names::Vector{String}`: A vector of substrate names.
+- `misc::Dict{Symbol,Any}`: User-owned storage for sequence-level values. Empty at construction; never touched by the package. Each snapshot has its own `misc` as well.
 
 # Examples
 ```julia
@@ -294,6 +313,9 @@ folder = "/path/to/PhysiCell/output"
 sequence = PhysiCellSequence(folder; include_cells=true, include_substrates=true) # loads cell and substrate data
 sequence = PhysiCellSequence(folder; include_attachments=true, include_spring_attachments=true) # loads attachment data
 sequence = PhysiCellSequence(folder; include_mesh=true, include_neighbors=true) # loads mesh and neighbor data
+
+# Keep your own sequence-level values with the sequence
+sequence.misc[:n_alive] = [count(.!s.cells.dead) for s in sequence.snapshots]
 ```
 """
 struct PhysiCellSequence <: AbstractPhysiCellSequence
@@ -302,6 +324,7 @@ struct PhysiCellSequence <: AbstractPhysiCellSequence
     cell_type_to_name_dict::Dict{Int,String}
     labels::Vector{String}
     substrate_names::Vector{String}
+    misc::Dict{Symbol,Any}
 end
 
 function PhysiCellSequence(folder::AbstractString;
@@ -335,7 +358,7 @@ function PhysiCellSequence(folder::AbstractString;
         push!(snapshots, index_to_snapshot(index))
         index += 1
     end
-    return PhysiCellSequence(String(folder), snapshots, cell_type_to_name_dict, labels, substrate_names)
+    return PhysiCellSequence(String(folder), snapshots, cell_type_to_name_dict, labels, substrate_names, Dict{Symbol,Any}())
 end
 
 function Base.show(io::IO, sequence::PhysiCellSequence)
@@ -347,6 +370,7 @@ function Base.show(io::IO, sequence::PhysiCellSequence)
     #! the `PhysiCellSnapshot` show. Load it explicitly with `loadMesh!` to populate it.
     mesh_loaded = !isempty(sequence.snapshots) && !isempty(sequence.snapshots[1].mesh)
     println(io, "  Mesh: $(mesh_loaded ? meshInfo(sequence) : "NOT LOADED")")
+    println(io, "  Misc: $(miscInfo(sequence))")
 end
 
 """
