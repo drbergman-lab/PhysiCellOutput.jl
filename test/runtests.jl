@@ -177,6 +177,45 @@ const FIXTURE = joinpath(@__DIR__, "fixtures", "output")
         end
     end
 
+    @testset "misc user-owned storage" begin
+        snap = PhysiCellSnapshot(FIXTURE, 0)
+        seq = PhysiCellSequence(FIXTURE)
+        @test snap.misc isa Dict{Symbol,Any} && isempty(snap.misc)
+        @test seq.misc isa Dict{Symbol,Any} && isempty(seq.misc)
+        @test all(isempty(s.misc) for s in seq.snapshots)
+        @test occursin("Misc: NONE", sprint(show, snap))
+        @test occursin("Misc: NONE", sprint(show, seq))
+
+        # assign / read back / memoize
+        snap.misc[:n_alive] = 7
+        @test snap.misc[:n_alive] == 7
+        calls = Ref(0)
+        get!(snap.misc, :n_alive) do; calls[] += 1; -1; end
+        @test calls[] == 0 && snap.misc[:n_alive] == 7      # already present → not recomputed
+        get!(snap.misc, :df) do; calls[] += 1; DataFrame(a=1:2); end
+        @test calls[] == 1 && snap.misc[:df] isa DataFrame  # arbitrary value types
+
+        # independence: snapshot dicts and the sequence dict are distinct objects
+        seq.misc[:seq_level] = [1, 2, 3]
+        seq.snapshots[1].misc[:first] = true
+        @test !haskey(seq.misc, :first)
+        @test !haskey(seq.snapshots[2].misc, :first)
+        @test !haskey(seq.snapshots[1].misc, :seq_level)
+        @test all(s.misc !== seq.misc for s in seq.snapshots)
+        @test seq.snapshots[1].misc !== seq.snapshots[2].misc
+
+        # loaders and cellDataSequence leave misc alone
+        loadCells!(snap); loadSubstrates!(snap); loadMesh!(snap); loadGraph!(snap, :neighbors)
+        @test snap.misc[:n_alive] == 7 && length(snap.misc) == 2
+        loadCells!(seq); loadMesh!(seq)
+        cellDataSequence(seq, "total_volume")
+        @test seq.misc[:seq_level] == [1, 2, 3] && seq.snapshots[1].misc[:first] === true
+
+        # show lists the sorted keys
+        @test occursin("Misc: df, n_alive", sprint(show, snap))
+        @test occursin("Misc: seq_level", sprint(show, seq))
+    end
+
     @testset "show is side-effect free" begin
         seq = PhysiCellSequence(FIXTURE)   # mesh not loaded
         @test isempty(seq.snapshots[1].mesh)

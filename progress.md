@@ -120,3 +120,41 @@ Leading `/` on `Pages=["/loader.jl"]` guards against suffix collisions (the Mode
 - `docs/src/index.md`, `docs/src/man/installation.md`, `docs/src/man/loading_data.md`,
   `docs/src/lib/{loader,xml_utilities,index}.md`, `docs/make.jl`.
 - `README.md`, `PRD.md` — status + zero-cell note updated.
+
+---
+
+## Session: `misc` user-owned Dict (2026-10-20)
+
+### Goal
+Give users a place to attach arbitrary values to a `PhysiCellSnapshot` or `PhysiCellSequence`
+(mid-run outputs from custom code, post-hoc analyses, anything), so derived quantities travel
+with the object they came from instead of living in loose variables.
+
+### Decisions
+- **Name: `misc`** (not `analyses`). The user pointed out the contents are not necessarily
+  post-analysis results — custom code may produce them mid-run — so a neutral name fits better.
+- **`Dict{Symbol,Any}`.** Symbol keys match the package's existing symbol selectors
+  (`:initial`/`:final`, `loadGraph!(s, :neighbors)`) and are light at the REPL; `Any` values
+  because the contents are arbitrary and a type parameter would thread through every signature.
+- **One dict per snapshot plus one on the sequence.** Sequence-level results have their own home;
+  nothing is shared between snapshots.
+- **Structs stay immutable.** `Dict` is itself mutable, so `S.misc[:k] = v` works as-is.
+- **No helper API.** `get!`, `haskey`, `delete!`, `merge!` from `Base` already cover
+  memoize/check/remove/pre-seed; wrappers would be surface area for no gain.
+- **No constructor keyword.** Pre-seeding is rare; `merge!` after construction covers it.
+- **Package contract:** PhysiCellOutput never reads, writes, or clears `misc`; loaders and
+  `cellDataSequence` do not touch it. `show` adds a side-effect-free `Misc:` line (`NONE` or the
+  sorted keys).
+- **Versioning: patch bump to 0.1.1.** The positional inner constructors gain an argument, which
+  breaks any direct caller, but none exist in this repo or PCMM (both go through the outer
+  constructors). `show` output and JLD2 round-tripping of 0.1.0 objects also change, but neither
+  is a public contract, and 0.1.0 has effectively one consumer. So a patch is defensible.
+
+### Rejected
+- `analyses` as the field name — too narrow (see above).
+- `String` keys for consistency with `mesh::Dict{String,...}` — offered, user chose Symbol.
+- `addAnalysis!`/`getAnalysis` helpers — redundant with `Base.Dict` methods.
+
+### Tests
+New `misc` testset: empty on construction, assign/read back/`get!`, snapshot vs sequence
+independence, survives `loadCells!`/`loadMesh!`/`cellDataSequence`, `show` lists keys.

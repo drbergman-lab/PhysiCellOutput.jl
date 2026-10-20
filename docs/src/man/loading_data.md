@@ -164,6 +164,30 @@ positions = cellDataSequence(sequence, "position")
 volumes   = cellDataSequence(sequence, "total_volume")
 ```
 
+## Keeping your own values: `misc`
+
+Every [`PhysiCellSnapshot`](@ref) and [`PhysiCellSequence`](@ref) carries a `misc::Dict{Symbol,Any}`
+that belongs to you. PhysiCellOutput never reads, writes, or clears it, so anything you compute from
+the object — whether mid-run from custom code or as a post-hoc analysis — can live alongside the data
+it came from. Each snapshot has its own `misc`, and the sequence has a separate one for sequence-level
+values.
+
+```julia
+sequence = PhysiCellSequence(folder; include_cells=true)
+
+for snapshot in sequence.snapshots
+    snapshot.misc[:n_alive] = count(.!snapshot.cells.dead)
+end
+sequence.misc[:n_alive] = [s.misc[:n_alive] for s in sequence.snapshots]
+
+# memoize with Base.get!: the body runs only if the key is absent
+get!(sequence.misc, :max_alive) do
+    maximum(sequence.misc[:n_alive])
+end
+```
+
+The `show` output of either type lists the keys currently stored under `Misc:`.
+
 ## Relationship to PhysiCellModelManager
 
 PhysiCellOutput is the base loading layer. It identifies data purely by **folder path** — it

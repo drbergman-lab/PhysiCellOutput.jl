@@ -47,6 +47,10 @@ data = cellDataSequence(folder, ["position", "elapsed_time_in_phase"];
                         include_dead=true, include_cell_type_name=true)
 data[1].position   # N×3 array of cell 1's position over time
 data[1].time       # times of the snapshots cell 1 appears in
+
+# Keep your own values with a snapshot or sequence (the package never touches `misc`):
+snapshot.misc[:n_alive] = count(.!snapshot.cells.dead)
+sequence.misc[:note] = "control arm"
 ```
 
 Cell and substrate data come back as `DataFrame`s; the mesh as a `Dict`; the graphs as `MetaGraphs` labeled by `AgentID`.
@@ -71,6 +75,7 @@ PhysiCellOutput is the base loading layer. PCMM identifies simulations by an int
 - [x] Loaders — `loadCells!`, `loadSubstrates!`, `loadMesh!`, `loadGraph!` (+ `_load*` internals). Reads zero-cell `.mat` files directly; the `MAT ≥ 0.12.1` compat floor makes the old `EOFError` workaround unnecessary.
 - [x] Graph support — `AgentID`, `AgentDict`, `physicellEmptyGraph`, `readPhysiCellGraph!`.
 - [x] `cellDataSequence` (+ deprecated `getCellDataSequence` alias).
+- [x] `misc::Dict{Symbol,Any}` user-owned storage on `PhysiCellSnapshot` and `PhysiCellSequence` (one per snapshot, one per sequence; never touched by the package; listed in `show`).
 - [x] `Project.toml` dependencies — `DataFrames`, `MAT`, `Graphs`, `MetaGraphsNext`, `LightXML`, `Dates`.
 - [x] Test suite (75 tests) against a committed PhysiCell output fixture (`test/fixtures/output`, sim with 3 snapshots + initial/final).
 - [x] Documenter site — Home + Getting Started (Installation, Loading data) + Reference (Loading API, XML utilities, alphabetical index); builds locally with doctests and `checkdocs=:exports` passing.
