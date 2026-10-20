@@ -304,7 +304,7 @@ To include any of `cells`, `substrates`, `mesh`, `attachments`, `spring_attachme
 - `snapshots::Vector{PhysiCellSnapshot}`: A vector of PhysiCell snapshots.
 - `cell_type_to_name_dict::Dict{Int, String}`: A dictionary mapping cell type IDs to cell type names.
 - `labels::Vector{String}`: A vector of cell data labels.
-- `substrate_names::Vector{String}`: A vector of substrate names (always read from `initial.xml`, whether or not substrate data is loaded).
+- `substrate_names::Vector{String}`: A vector of substrate names.
 - `misc::Dict{Symbol,Any}`: User-owned storage for sequence-level values. Empty at construction; never touched by the package. Each snapshot has its own `misc` as well.
 
 # Examples
