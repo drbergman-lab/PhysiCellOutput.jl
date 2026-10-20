@@ -100,6 +100,21 @@ const FIXTURE = joinpath(@__DIR__, "fixtures", "output")
 
         # snapshots are in index order
         @test [s.index for s in seq.snapshots] == [0, 1, 2]
+
+        # no initial.xml at all → missing
+        @test PhysiCellSequence(joinpath(FIXTURE, "does_not_exist")) === missing
+
+        # initial.xml present but with no cell types (e.g. pruned) → missing
+        mktempdir() do dir
+            doc = parse_file(joinpath(FIXTURE, "initial.xml"))
+            cell_types = PhysiCellOutput.retrieveElement(doc, ["cellular_information", "cell_populations", "cell_population", "custom", "simplified_data", "cell_types"]; required=true)
+            for child in collect(child_elements(cell_types))
+                unlink(child); free(child)
+            end
+            save_file(doc, joinpath(dir, "initial.xml"))
+            free(doc)
+            @test PhysiCellSequence(dir) === missing
+        end
     end
 
     @testset "lazy loaders + idempotency" begin
