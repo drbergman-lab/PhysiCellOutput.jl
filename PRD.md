@@ -34,7 +34,7 @@ The original PCMM `loader.jl` keyed `PhysiCellSnapshot`/`PhysiCellSequence` on a
 - Construction takes a folder path (+ an `index` for snapshots).
 - **PCMM re-adds its concept:** PCMM converts `simulation_id → output-folder path` at its own boundary and calls PhysiCellOutput. Where PCMM wants the id displayed (its `show` currently prints `SimID=…`), PCMM defines a thin wrapper struct carrying the `simulation_id` plus the PhysiCellOutput object, and gives it a custom `show`. PhysiCellOutput provides the loading; PCMM provides the id semantics.
 
-Rationale and alternatives considered are recorded in [progress.md](progress.md) (Session: initial scaffolding).
+**Rationale:** the standalone package must be meaningful to anyone holding a bare output folder, and keeping PCMM concepts out entirely makes the core as simple as possible; the wrapper is cheap for PCMM. Rejected: keeping `simulation_id` on the structs (every folder-based user would have to invent an id), and a parametric `source`/owner field with a display interface (a type parameter through every signature for a single consumer).
 
 ---
 
