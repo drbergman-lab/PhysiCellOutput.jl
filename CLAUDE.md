@@ -7,7 +7,7 @@ Assistant professor working on computational modeling of cancer-immune interacti
 
 | Document | Purpose |
 |----------|---------|
-| [README.md](README.md) | Project overview and roadmap |
+| [README.md](README.md) | Project overview and quick start |
 | [PRD.md](PRD.md) | Behavioral specification for every feature — acceptance criteria and edge cases |
 
 Start any feature session by reading the relevant PRD entry.

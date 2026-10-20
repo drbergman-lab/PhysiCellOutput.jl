@@ -9,7 +9,7 @@ Read the output folder of a **single PhysiCell simulation** into Julia — cells
 
 PhysiCellOutput is a lightweight, path-based loader. It exists so that loading PhysiCell data does not require the full [PhysiCellModelManager.jl](https://github.com/drbergman-lab/PhysiCellModelManager.jl) (PCMM) stack. PCMM depends on PhysiCellOutput for its output loading and layers its database concepts (e.g. simulation IDs) on top.
 
-> **Status:** The loader is ported from PCMM's `loader.jl` and tested against a real output fixture. Remaining work is the downstream PCMM migration; see **Roadmap** below.
+> **Status:** The loader is ported from PCMM's `loader.jl`, tested against a real output fixture, and PCMM now depends on this package for its output loading.
 
 ## Installation
 
@@ -58,8 +58,3 @@ Cell and substrate data come back as `DataFrame`s; the mesh as a `Dict`; the gra
 ## Relationship to PhysiCellModelManager.jl
 
 PhysiCellOutput is the base loading layer. PCMM identifies simulations by an integer `simulation_id` stored in its database; PhysiCellOutput does not — it works purely from folder paths. PCMM converts `simulation_id → output folder` and calls PhysiCellOutput, wrapping the result in a thin PCMM-side type when it wants the ID displayed. If you are managing many simulations with a database and parameter sweeps, use PCMM; if you just have an output folder to read, use this package directly.
-
----
-
-## Roadmap
-- [ ] PCMM migration — PCMM depends on PhysiCellOutput and adds its `simulation_id` wrapper (tracked in PCMM, not here).
