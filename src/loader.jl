@@ -304,7 +304,7 @@ To include any of `cells`, `substrates`, `mesh`, `attachments`, `spring_attachme
 - `snapshots::Vector{PhysiCellSnapshot}`: A vector of PhysiCell snapshots.
 - `cell_type_to_name_dict::Dict{Int, String}`: A dictionary mapping cell type IDs to cell type names.
 - `labels::Vector{String}`: A vector of cell data labels.
-- `substrate_names::Vector{String}`: A vector of substrate names.
+- `substrate_names::Vector{String}`: A vector of substrate names (always read from `initial.xml`, whether or not substrate data is loaded).
 - `misc::Dict{Symbol,Any}`: User-owned storage for sequence-level values. Empty at construction; never touched by the package. Each snapshot has its own `misc` as well.
 
 # Examples
@@ -336,13 +336,21 @@ function PhysiCellSequence(folder::AbstractString;
     include_neighbors::Bool=false)
 
     path_to_xml = pathToOutputXML(folder, :initial)
-    cell_type_to_name_dict = cellTypeToNameDict(path_to_xml)
-    if isempty(cell_type_to_name_dict)
-        println("Could not find cell type information in $path_to_xml. This means that there is no initial.xml file, possibly due to pruning. Returning missing.")
+    if !isfile(path_to_xml)
+        println("Could not find $path_to_xml. This means that there is no initial.xml file, possibly due to pruning. Returning missing.")
         return missing
     end
-    labels = cellLabels(path_to_xml)
-    substrate_names = include_substrates ? substrateNames(path_to_xml) : String[]
+    #! parse initial.xml once for all three pieces of metadata; substrate names are always read
+    #! (not only with include_substrates) so a later loadSubstrates!(sequence) finds them on the sequence
+    xml_doc = parse_file(path_to_xml)
+    cell_type_to_name_dict = cellTypeToNameDict(xml_doc)
+    labels = cellLabels(xml_doc)
+    substrate_names = substrateNames(xml_doc)
+    free(xml_doc)
+    if isempty(cell_type_to_name_dict)
+        println("Could not find cell type information in $path_to_xml. Returning missing.")
+        return missing
+    end
     index_to_snapshot = index -> PhysiCellSnapshot(folder, index, labels, substrate_names;
                                                    include_cells=include_cells,
                                                    cell_type_to_name_dict=cell_type_to_name_dict,
@@ -634,6 +642,11 @@ function loadSubstrates!(snapshot::PhysiCellSnapshot, substrate_names::Vector{St
 end
 
 function loadSubstrates!(sequence::PhysiCellSequence)
+    if isempty(sequence.substrate_names)
+        #! the struct is immutable but the vector is not: fill it in place so substrateNames(sequence)
+        #! and show report the names, and so the snapshots below do not each re-parse their XML
+        append!(sequence.substrate_names, substrateNames(pathToOutputXML(sequence.folder, :initial)))
+    end
     for snapshot in sequence.snapshots
         loadSubstrates!(snapshot, sequence.substrate_names)
     end
