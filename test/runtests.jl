@@ -91,14 +91,30 @@ const FIXTURE = joinpath(@__DIR__, "fixtures", "output")
         @test length(seq.snapshots) == 3   # output0000000{0,1,2}
         @test seq.cell_type_to_name_dict == Dict(0 => "default")
         @test length(seq.labels) == 88
-        @test seq.substrate_names == String[]   # not requested
+        @test seq.substrate_names == ["substrate"]   # always read from initial.xml, even without include_substrates
+        @test isempty(seq.snapshots[1].substrates)   # ...but the data itself is not loaded
 
-        # substrate names populated when requested
         seq_sub = PhysiCellSequence(FIXTURE; include_substrates=true)
         @test seq_sub.substrate_names == ["substrate"]
+        @test names(seq_sub.snapshots[1].substrates) == ["x", "y", "z", "volume", "substrate"]
 
         # snapshots are in index order
         @test [s.index for s in seq.snapshots] == [0, 1, 2]
+
+        # no initial.xml at all → missing
+        @test PhysiCellSequence(joinpath(FIXTURE, "does_not_exist")) === missing
+
+        # initial.xml present but with no cell types (e.g. pruned) → missing
+        mktempdir() do dir
+            doc = parse_file(joinpath(FIXTURE, "initial.xml"))
+            cell_types = PhysiCellOutput.retrieveElement(doc, ["cellular_information", "cell_populations", "cell_population", "custom", "simplified_data", "cell_types"]; required=true)
+            for child in collect(child_elements(cell_types))
+                unlink(child); free(child)
+            end
+            save_file(doc, joinpath(dir, "initial.xml"))
+            free(doc)
+            @test PhysiCellSequence(dir) === missing
+        end
     end
 
     @testset "lazy loaders + idempotency" begin
@@ -108,6 +124,18 @@ const FIXTURE = joinpath(@__DIR__, "fixtures", "output")
         rows_before = nrow(seq.snapshots[1].cells)
         loadCells!(seq)                     # idempotent: no duplication
         @test nrow(seq.snapshots[1].cells) == rows_before
+
+        # lazy loadSubstrates! on a sequence: names are on the sequence, data on every snapshot
+        seq = PhysiCellSequence(FIXTURE)
+        loadSubstrates!(seq)
+        @test substrateNames(seq) == ["substrate"]
+        @test all(names(s.substrates) == ["x", "y", "z", "volume", "substrate"] for s in seq.snapshots)
+        @test occursin("Substrates: substrate", sprint(show, seq))
+        # a sequence whose names vector is empty (e.g. built by hand) is back-filled by loadSubstrates!
+        seq = PhysiCellSequence(FIXTURE)
+        empty!(seq.substrate_names)
+        loadSubstrates!(seq)
+        @test seq.substrate_names == ["substrate"]
 
         snap = PhysiCellSnapshot(FIXTURE, 0)
         loadSubstrates!(snap)

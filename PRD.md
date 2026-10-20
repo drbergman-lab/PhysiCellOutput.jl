@@ -99,7 +99,7 @@ The original PCMM `loader.jl` keyed `PhysiCellSnapshot`/`PhysiCellSequence` on a
 **Constructor:** `PhysiCellSequence(folder::AbstractString; include_cells, include_substrates, include_mesh, include_attachments, include_spring_attachments, include_neighbors)` (all `false` by default).
 
 **Behavioral spec:**
-- Reads `cell_type_to_name_dict`, `labels` (and `substrate_names` when substrates requested) once from the `:initial` XML and threads them into every snapshot (avoids re-parsing XML per snapshot).
+- Parses the `:initial` XML once and reads `cell_type_to_name_dict`, `labels`, and `substrate_names` from it, threading them into every snapshot (avoids re-parsing XML per snapshot). Substrate names are read regardless of `include_substrates`, so a later `loadSubstrates!(sequence)` finds them on the sequence and `substrateNames(sequence)`/`show` report them.
 - If the initial XML has no cell-type info (e.g. pruned output), print a message and return `missing`.
 - Iterates `index = 0, 1, 2, …` building a snapshot for each while `output{index}.xml` exists.
 - `show` prints folder, number of snapshots, cell types, substrates, mesh info, and a `Misc:` line (`NONE` or the sorted keys).
@@ -107,6 +107,7 @@ The original PCMM `loader.jl` keyed `PhysiCellSnapshot`/`PhysiCellSequence` on a
 **Acceptance criteria:**
 - A folder with N `output*.xml` files yields a sequence of N snapshots in index order.
 - Metadata (labels, cell types, substrate names) is parsed once, not per snapshot.
+- `substrateNames(sequence)` is non-empty immediately after construction, and after `loadSubstrates!(sequence)` on a sequence constructed without `include_substrates`.
 
 ### Feature: `misc` — user-owned storage
 **One-line:** A `Dict{Symbol,Any}` on every snapshot and sequence where users keep whatever they want attached to that object.
@@ -176,6 +177,7 @@ All loaders are idempotent: if the target container is already populated, they r
 
 ### Feature: `loadSubstrates!`
 - `loadSubstrates!(snapshot[, substrate_names])` and `loadSubstrates!(sequence)`.
+- `loadSubstrates!(sequence)` back-fills an empty `sequence.substrate_names` in place from the `:initial` XML before loading, so the names are read once per sequence rather than once per snapshot and the sequence-level metadata stays consistent with the loaded data.
 - Reads `<base>_microenvironment0.mat` (variable `multiscale_microenvironment`) into columns `x, y, z, volume, <substrates…>`.
 - Missing `.mat` → message + `missing`.
 
